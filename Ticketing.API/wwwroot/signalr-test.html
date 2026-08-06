@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ISTS SignalR Test Console</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.7/signalr.min.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --success: #16a34a;
+            --warning: #ca8a04;
+            --danger: #dc2626;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+            --border: #e2e8f0;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.5;
+        }
+
+        h1 { margin: 0 0 20px; font-size: 1.5rem; }
+        h2 { margin: 0 0 12px; font-size: 1.1rem; color: var(--primary-dark); }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .form-group { margin-bottom: 14px; }
+        label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: #64748b;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-family: inherit;
+        }
+
+        textarea { resize: vertical; min-height: 60px; }
+
+        button {
+            padding: 8px 14px;
+            border: none;
+            border-radius: 6px;
+            background: var(--primary);
+            color: white;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        button:hover { background: var(--primary-dark); }
+        button:disabled { background: #94a3b8; cursor: not-allowed; }
+
+        .btn-success { background: var(--success); }
+        .btn-warning { background: var(--warning); }
+        .btn-danger { background: var(--danger); }
+        .btn-group { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+
+        .status {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+
+        .status.disconnected { background: var(--danger); }
+        .status.connecting { background: var(--warning); }
+        .status.connected { background: var(--success); }
+
+        .log {
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: #0f172a;
+            color: #e2e8f0;
+            height: 500px;
+            overflow-y: auto;
+            padding: 12px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.8rem;
+        }
+
+        .log-entry {
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #1e293b;
+        }
+
+        .log-time { color: #94a3b8; margin-right: 8px; }
+        .log-event { color: #38bdf8; font-weight: 600; }
+        .log-data { color: #cbd5e1; white-space: pre-wrap; word-break: break-word; }
+        .log-info { color: #a3e635; }
+        .log-error { color: #f87171; }
+
+        .message-list {
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 12px;
+            max-height: 220px;
+            overflow-y: auto;
+            background: #f8fafc;
+        }
+
+        .message-item {
+            padding: 8px;
+            margin-bottom: 8px;
+            background: white;
+            border-radius: 6px;
+            border-left: 3px solid var(--primary);
+        }
+
+        .message-meta { font-size: 0.75rem; color: #64748b; margin-bottom: 4px; }
+        .typing-indicator {
+            font-style: italic;
+            color: var(--warning);
+            min-height: 22px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .tab {
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            background: var(--border);
+        }
+
+        .tab.active { background: var(--primary); color: white; }
+
+        @media (max-width: 900px) {
+            .container { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <h1>ISTS SignalR Test Console</h1>
+
+    <div class="container">
+        <div class="sidebar">
+            <div class="card">
+                <h2>Connection</h2>
+                <div class="form-group">
+                    <label>API Base URL</label>
+                    <select id="baseUrl">
+                        <option value="https://localhost:7027">https://localhost:7027</option>
+                        <option value="http://localhost:5011">http://localhost:5011</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>JWT Token</label>
+                    <input type="password" id="token" placeholder="paste access token" />
+                </div>
+                <div class="form-group">
+                    <label>Ticket ID</label>
+                    <input id="ticketId" placeholder="paste ticket id" />
+                </div>
+                <div class="form-group">
+                    <span id="supportStatus" class="status disconnected"></span>
+                    <span id="supportStatusText">Support hub disconnected</span>
+                </div>
+                <div class="form-group">
+                    <span id="notificationStatus" class="status disconnected"></span>
+                    <span id="notificationStatusText">Notification hub disconnected</span>
+                </div>
+                <div class="btn-group">
+                    <button onclick="connectAll()">Connect Both</button>
+                    <button class="btn-danger" onclick="disconnectAll()">Disconnect</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Actions</h2>
+                <div class="btn-group">
+                    <button onclick="joinTicketGroup()">Join Group</button>
+                    <button class="btn-warning" onclick="leaveTicketGroup()">Leave Group</button>
+                </div>
+                <div class="btn-group">
+                    <button onclick="sendTyping()">Send Typing</button>
+                    <button class="btn-success" onclick="sendReadReceipt()">Send Read Receipt</button>
+                </div>
+                <hr style="border: none; border-top: 1px solid var(--border); margin: 14px 0;">
+                <div class="form-group">
+                    <label>Send HTTP Message</label>
+                    <textarea id="httpMessage" placeholder="Type a message..."></textarea>
+                </div>
+                <div class="btn-group">
+                    <button class="btn-success" onclick="sendHttpMessage()">Send via HTTP</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="main">
+            <div class="card">
+                <div class="tabs">
+                    <div class="tab active" onclick="switchTab('log')">Event Log</div>
+                    <div class="tab" onclick="switchTab('messages')">Chat Messages</div>
+                    <div class="tab" onclick="switchTab('notifications')">Notifications</div>
+                </div>
+
+                <div id="tab-log" class="tab-panel">
+                    <div class="btn-group" style="margin-bottom: 10px;">
+                        <button class="btn-danger" onclick="clearLog()">Clear Log</button>
+                    </div>
+                    <div id="log" class="log"></div>
+                </div>
+
+                <div id="tab-messages" class="tab-panel" style="display: none;">
+                    <div class="typing-indicator" id="typingIndicator"></div>
+                    <div id="messageList" class="message-list"></div>
+                </div>
+
+                <div id="tab-notifications" class="tab-panel" style="display: none;">
+                    <div id="notificationList" class="message-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let supportConnection = null;
+        let notificationConnection = null;
+        let typingTimeout = null;
+
+        function log(event, data, type = 'event') {
+            const logEl = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+
+            const time = new Date().toLocaleTimeString();
+            const dataText = typeof data === 'object' ? JSON.stringify(data, null, 2) : data;
+
+            let colorClass = 'log-event';
+            if (type === 'info') colorClass = 'log-info';
+            if (type === 'error') colorClass = 'log-error';
+
+            entry.innerHTML = `
+                <span class="log-time">[${time}]</span>
+                <span class="${colorClass}">${event}</span>
+                <div class="log-data">${dataText}</div>
+            `;
+
+            logEl.appendChild(entry);
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function getBaseUrl() {
+            return document.getElementById('baseUrl').value;
+        }
+
+        function getToken() {
+            return document.getElementById('token').value;
+        }
+
+        function getTicketId() {
+            return document.getElementById('ticketId').value;
+        }
+
+        function setSupportStatus(connected, text) {
+            const status = document.getElementById('supportStatus');
+            const statusText = document.getElementById('supportStatusText');
+            status.className = 'status ' + (connected ? 'connected' : 'disconnected');
+            statusText.textContent = text;
+        }
+
+        function setNotificationStatus(connected, text) {
+            const status = document.getElementById('notificationStatus');
+            const statusText = document.getElementById('notificationStatusText');
+            status.className = 'status ' + (connected ? 'connected' : 'disconnected');
+            statusText.textContent = text;
+        }
+
+        async function connectSupportHub() {
+            if (supportConnection) await supportConnection.stop();
+
+            const token = getToken();
+            const baseUrl = getBaseUrl();
+
+            supportConnection = new signalR.HubConnectionBuilder()
+                .withUrl(`${baseUrl}/hubs/support?access_token=${token}`)
+                .withAutomaticReconnect()
+                .configureLogging(signalR.LogLevel.Warning)
+                .build();
+
+            supportConnection.on('ReceiveMessage', (msg) => {
+                log('ReceiveMessage', msg);
+                addMessage(msg);
+            });
+
+            supportConnection.on('Typing', (info) => {
+                log('Typing', info);
+                showTyping(info.userName);
+            });
+
+            supportConnection.on('ReadReceipt', (info) => {
+                log('ReadReceipt', info);
+            });
+
+            supportConnection.onreconnecting(() => {
+                setSupportStatus(false, 'Support hub reconnecting...');
+                log('support reconnecting', null, 'info');
+            });
+
+            supportConnection.onreconnected(() => {
+                setSupportStatus(true, 'Support hub connected');
+                log('support reconnected', null, 'info');
+            });
+
+            supportConnection.onclose(() => {
+                setSupportStatus(false, 'Support hub disconnected');
+                log('support closed', null, 'info');
+            });
+
+            try {
+                await supportConnection.start();
+                setSupportStatus(true, 'Support hub connected');
+                log('support connected', null, 'info');
+            } catch (err) {
+                setSupportStatus(false, 'Support hub failed');
+                log('support connection error', err.message || err, 'error');
+            }
+        }
+
+        async function connectNotificationHub() {
+            if (notificationConnection) await notificationConnection.stop();
+
+            const token = getToken();
+            const baseUrl = getBaseUrl();
+
+            notificationConnection = new signalR.HubConnectionBuilder()
+                .withUrl(`${baseUrl}/hubs/notifications?access_token=${token}`)
+                .withAutomaticReconnect()
+                .configureLogging(signalR.LogLevel.Warning)
+                .build();
+
+            notificationConnection.on('Notification', (notif) => {
+                log('Notification', notif);
+                addNotification(notif);
+            });
+
+            notificationConnection.onreconnecting(() => {
+                setNotificationStatus(false, 'Notification hub reconnecting...');
+                log('notification reconnecting', null, 'info');
+            });
+
+            notificationConnection.onreconnected(() => {
+                setNotificationStatus(true, 'Notification hub connected');
+                log('notification reconnected', null, 'info');
+            });
+
+            notificationConnection.onclose(() => {
+                setNotificationStatus(false, 'Notification hub disconnected');
+                log('notification closed', null, 'info');
+            });
+
+            try {
+                await notificationConnection.start();
+                setNotificationStatus(true, 'Notification hub connected');
+                log('notification connected', null, 'info');
+            } catch (err) {
+                setNotificationStatus(false, 'Notification hub failed');
+                log('notification connection error', err.message || err, 'error');
+            }
+        }
+
+        async function connectAll() {
+            await connectSupportHub();
+            await connectNotificationHub();
+        }
+
+        async function disconnectAll() {
+            if (supportConnection) {
+                await supportConnection.stop();
+                supportConnection = null;
+            }
+            if (notificationConnection) {
+                await notificationConnection.stop();
+                notificationConnection = null;
+            }
+            setSupportStatus(false, 'Support hub disconnected');
+            setNotificationStatus(false, 'Notification hub disconnected');
+            log('disconnected all', null, 'info');
+        }
+
+        async function joinTicketGroup() {
+            if (!supportConnection) {
+                log('error', 'Support hub not connected', 'error');
+                return;
+            }
+            try {
+                await supportConnection.invoke('JoinTicketGroup', getTicketId());
+                log('invoked', `Joined ticket group ${getTicketId()}`, 'info');
+            } catch (err) {
+                log('JoinTicketGroup error', err.message || err, 'error');
+            }
+        }
+
+        async function leaveTicketGroup() {
+            if (!supportConnection) return;
+            try {
+                await supportConnection.invoke('LeaveTicketGroup', getTicketId());
+                log('invoked', `Left ticket group ${getTicketId()}`, 'info');
+            } catch (err) {
+                log('LeaveTicketGroup error', err.message || err, 'error');
+            }
+        }
+
+        async function sendTyping() {
+            if (!supportConnection) {
+                log('error', 'Support hub not connected', 'error');
+                return;
+            }
+            try {
+                await supportConnection.invoke('Typing', getTicketId());
+                log('invoked', `Typing sent for ${getTicketId()}`, 'info');
+            } catch (err) {
+                log('Typing error', err.message || err, 'error');
+            }
+        }
+
+        async function sendReadReceipt() {
+            if (!supportConnection) {
+                log('error', 'Support hub not connected', 'error');
+                return;
+            }
+            try {
+                await supportConnection.invoke('ReadReceipt', getTicketId());
+                log('invoked', `Read receipt sent for ${getTicketId()}`, 'info');
+            } catch (err) {
+                log('ReadReceipt error', err.message || err, 'error');
+            }
+        }
+
+        async function sendHttpMessage() {
+            const ticketId = getTicketId();
+            const message = document.getElementById('httpMessage').value;
+            const baseUrl = getBaseUrl();
+            const token = getToken();
+
+            if (!ticketId || !message) {
+                log('error', 'Ticket ID and message are required', 'error');
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('Message', message);
+                formData.append('IsInternal', 'false');
+
+                const response = await fetch(`${baseUrl}/api/tickets/${ticketId}/messages`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+
+                const result = await response.json();
+                log('HTTP message response', result, 'info');
+                document.getElementById('httpMessage').value = '';
+            } catch (err) {
+                log('HTTP message error', err.message || err, 'error');
+            }
+        }
+
+        function addMessage(msg) {
+            const list = document.getElementById('messageList');
+            const item = document.createElement('div');
+            item.className = 'message-item';
+            item.innerHTML = `
+                <div class="message-meta">${msg.senderName} @ ${new Date(msg.createdAt).toLocaleString()}</div>
+                <div>${escapeHtml(msg.message)}</div>
+                ${msg.attachmentUrl ? `<div><a href="${msg.attachmentUrl}" target="_blank">📎 Attachment</a></div>` : ''}
+            `;
+            list.appendChild(item);
+            list.scrollTop = list.scrollHeight;
+        }
+
+        function addNotification(notif) {
+            const list = document.getElementById('notificationList');
+            const item = document.createElement('div');
+            item.className = 'message-item';
+            item.style.borderLeftColor = notif.isRead ? '#94a3b8' : '#dc2626';
+            item.innerHTML = `
+                <div class="message-meta">${notif.title} @ ${new Date(notif.createdAt).toLocaleString()}</div>
+                <div>${escapeHtml(notif.message)}</div>
+                <div class="message-meta">Read: ${notif.isRead} | Type: ${notif.type}</div>
+            `;
+            list.appendChild(item);
+            list.scrollTop = list.scrollHeight;
+        }
+
+        function showTyping(userName) {
+            const indicator = document.getElementById('typingIndicator');
+            indicator.textContent = `${userName || 'Someone'} is typing...`;
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                indicator.textContent = '';
+            }, 2000);
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        function switchTab(name) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+
+            event.target.classList.add('active');
+            document.getElementById(`tab-${name}`).style.display = 'block';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Auto-join group after connecting if ticket id is present
+        window.addEventListener('beforeunload', () => {
+            disconnectAll();
+        });
+    </script>
+</body>
+</html>
