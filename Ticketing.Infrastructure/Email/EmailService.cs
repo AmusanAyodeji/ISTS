@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using System.Net.Mail;
-using System.Net;
+using System.Net.Http.Json;
 using Ticketing.Application.Interfaces.Services;
 
 namespace Ticketing.Infrastructure.Email;
@@ -10,53 +9,97 @@ public class EmailService : IEmailService
 {
     private readonly IConfiguration _configuration;
     private readonly ILogger<EmailService> _logger;
+    private readonly HttpClient _httpClient;
 
-    public EmailService(IConfiguration configuration, ILogger<EmailService> logger)
+    public EmailService(
+        IConfiguration configuration,
+        ILogger<EmailService> logger,
+        HttpClient httpClient)
     {
         _configuration = configuration;
         _logger = logger;
+        _httpClient = httpClient;
     }
 
-    public async Task SendAsync(string to, string subject, string htmlBody, CancellationToken cancellationToken = default)
+    public async Task SendAsync(
+        string to,
+        string subject,
+        string htmlBody,
+        CancellationToken cancellationToken = default)
     {
-        var host = _configuration["Email:Host"];
-        var port = _configuration.GetValue<int?>("Email:Port") ?? 587;
-        var username = _configuration["Email:Username"];
-        var password = _configuration["Email:Password"];
+        var apiKey = _configuration["Email:ApiKey"];
+        var fromEmail = _configuration["Email:FromEmail"];
         var fromName = _configuration["Email:FromName"] ?? "ISTS";
-        var fromEmail = _configuration["Email:FromEmail"] ?? "no-reply@ists.local";
 
-        // In development with localhost, just log instead of sending
-        if (string.IsNullOrEmpty(host) || host == "localhost")
-        {
-            _logger.LogInformation("Development mode: Email not sent. To={To}, Subject={Subject}", to, subject);
-            return;
-        }
+        if (string.IsNullOrWhiteSpace(apiKey))
+            throw new InvalidOperationException(
+                "Email API key is not configured.");
+
+        if (string.IsNullOrWhiteSpace(fromEmail))
+            throw new InvalidOperationException(
+                "Sender email is not configured.");
 
         try
         {
-            using var client = new SmtpClient(host, port)
-            {
-                EnableSsl = true,
-                Credentials = new NetworkCredential(username, password),
-                DeliveryMethod = SmtpDeliveryMethod.Network
-            };
+            using var request = new HttpRequestMessage(
+                HttpMethod.Post,
+                "https://api.brevo.com/v3/smtp/email"
+            );
 
-            var mailMessage = new MailMessage
-            {
-                From = new MailAddress(fromEmail, fromName),
-                Subject = subject,
-                Body = htmlBody,
-                IsBodyHtml = true
-            };
-            mailMessage.To.Add(to);
+            request.Headers.Add("api-key", apiKey);
 
-            await client.SendMailAsync(mailMessage, cancellationToken);
-            _logger.LogInformation("Email sent to {To} with subject {Subject}", to, subject);
+            request.Content = JsonContent.Create(new
+            {
+                sender = new
+                {
+                    name = fromName,
+                    email = fromEmail
+                },
+
+                to = new[]
+                {
+                    new
+                    {
+                        email = to
+                    }
+                },
+
+                subject = subject,
+
+                htmlContent = htmlBody
+            });
+
+            using var response = await _httpClient.SendAsync(
+                request,
+                cancellationToken
+            );
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync(
+                    cancellationToken
+                );
+
+                throw new InvalidOperationException(
+                    $"Brevo email failed: {(int)response.StatusCode} {error}"
+                );
+            }
+
+            _logger.LogInformation(
+                "Email sent successfully to {To} with subject {Subject}",
+                to,
+                subject
+            );
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send email to {To} with subject {Subject}", to, subject);
+            _logger.LogError(
+                ex,
+                "Failed to send email to {To} with subject {Subject}",
+                to,
+                subject
+            );
+
             throw;
         }
     }

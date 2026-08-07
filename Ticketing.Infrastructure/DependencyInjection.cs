@@ -58,7 +58,7 @@ public static class DependencyInjection
         services.AddScoped<ITicketMessageRepository, TicketMessageRepository>();
         services.AddScoped<IFileAttachmentRepository, FileAttachmentRepository>();
 
-        services.AddScoped<IEmailService, EmailService>();
+        services.AddHttpClient<IEmailService, EmailService>();
         services.AddScoped<IJwtService, JwtTokenService>();
 
         services.Configure<CloudinarySettings>(
