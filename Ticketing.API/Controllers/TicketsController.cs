@@ -16,6 +16,7 @@ using Ticketing.Application.Features.Tickets.Queries.GetBreachedTickets;
 using Ticketing.Application.Features.Tickets.Queries.GetTicketAnalytics;
 using Ticketing.Application.Features.Tickets.Queries.GetTickets;
 using Ticketing.Application.Features.Tickets.Queries.GetTicketById;
+using Ticketing.Application.Features.Tickets.Queries.GetAvailableTickets;
 using Ticketing.Application.Features.Tickets.Commands.UpdateTicketStatus;
 using Ticketing.Application.Interfaces.Services;
 using Ticketing.Domain.Enums;
@@ -81,6 +82,15 @@ public class TicketsController : BaseApiController
                 priority,
                 fromDate,
                 toDate), cancellationToken);
+        return Ok(ApiResponse<object>.Success(result, "Tickets retrieved successfully."));
+    }
+
+    [HttpGet("available")]
+    [Authorize(Policy = "AgentOrAbove")]
+    public async Task<IActionResult> GetAvailableTickets(Guid departmentId,CancellationToken cancellationToken)
+    {
+        var result = await Mediator.Send(
+            new GetAvailableTicketsQuery(departmentId), cancellationToken);
         return Ok(ApiResponse<object>.Success(result, "Tickets retrieved successfully."));
     }
 
