@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.SignalR;
 using Ticketing.Application.DTOs.Messages;
 using Ticketing.Application.DTOs.Notifications;
 using Ticketing.Application.Interfaces.Services;
+using Ticketing.Application.DTOs;
 
 namespace Ticketing.Infrastructure.Realtime;
 
@@ -40,5 +41,33 @@ public class NotificationHubService : INotificationHubService
     {
         await _supportHubContext.Clients.Group($"ticket-{ticketId}")
             .SendAsync("ReadReceipt", new { UserId = userId, TicketId = ticketId });
+    }
+    public async Task NotifyTicketStatusChangedAsync(Guid ticketId, TicketResponseDto ticket)
+    {
+        await _supportHubContext
+            .Clients
+            .Group($"ticket-{ticketId}")
+            .SendAsync("TicketStatusChanged", ticket);
+    }
+    public async Task NotifyUnassignedTicketAcceptedAsync(TicketAssignedDto dto)
+    {
+        await _supportHubContext
+            .Clients
+            .Group("ticketqueue")
+            .SendAsync("TicketAccepted", dto);
+    }
+    public async Task AddTicketToQueueAsync(TicketResponseDto ticket)
+    {
+        await _supportHubContext
+            .Clients
+            .Group("ticketqueue")
+            .SendAsync("TicketAdded", ticket);
+    }
+    public async Task NotifyTicketDeletionAsync(Guid TicketId)
+    {
+        await _supportHubContext
+            .Clients
+            .Group("ticketqueue")
+            .SendAsync("TicketDeleted", TicketId);
     }
 }

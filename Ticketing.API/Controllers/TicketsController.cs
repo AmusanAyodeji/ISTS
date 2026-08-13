@@ -17,7 +17,8 @@ using Ticketing.Application.Features.Tickets.Queries.GetTicketAnalytics;
 using Ticketing.Application.Features.Tickets.Queries.GetTickets;
 using Ticketing.Application.Features.Tickets.Queries.GetTicketById;
 using Ticketing.Application.Features.Tickets.Queries.GetAvailableTickets;
-using Ticketing.Application.Features.Tickets.Commands.UpdateTicketStatus;
+using Ticketing.Application.Features.Tickets.Commands.ReassignTicket;
+using Ticketing.Application.Features.Tickets.Commands.CloseTicket;
 using Ticketing.Application.Interfaces.Services;
 using Ticketing.Domain.Enums;
 
@@ -162,19 +163,31 @@ public async Task<IActionResult> GetBreachedTickets(
             "Ticket assigned successfully."));
     }
 
-    [HttpPut("{id:guid}/status")]
+    [HttpPut("{id:guid}/reassign")]
     [Authorize(Policy = "AgentOrAbove")]
-    public async Task<IActionResult> UpdateStatus(
-        Guid id,
-        [FromBody] UpdateTicketStatusRequestDto request,
-        CancellationToken cancellationToken)
+    public async Task<IActionResult> ReassignTicket(
+    Guid id,
+    [FromBody] AssignTicketRequestDto request,
+    CancellationToken cancellationToken)
     {
         var result = await Mediator.Send(
-            new UpdateTicketStatusCommand(id, request), cancellationToken);
+            new ReassignTicketCommand(id, request), cancellationToken);
 
         return Ok(ApiResponse<TicketResponseDto>.Success(
             result,
-            "Ticket status updated successfully."));
+            "Ticket reassigned successfully."));
+    }
+
+    [HttpPut("{id:guid}/close")]
+    [Authorize(Policy = "AgentOrAbove")]
+    public async Task<IActionResult> CloseTicket(
+        Guid TicketId,
+        CancellationToken cancellationToken)
+    {
+        var result = await Mediator.Send(
+            new CloseTicketCommand(TicketId), cancellationToken);
+
+        return Ok("Ticket closed successfully");
     }
 
     [HttpPut("{id:guid}/escalate")]

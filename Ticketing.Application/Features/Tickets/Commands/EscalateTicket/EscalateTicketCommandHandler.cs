@@ -5,6 +5,9 @@ using MediatR;
 using Ticketing.Application.DTOs;
 using Ticketing.Application.Interfaces.Persistence;
 using Ticketing.Domain.Enums;
+using Ticketing.Application.Interfaces.Services;
+using Ticketing.Application.DTOs.Notifications;
+using Ticketing.Domain.Entities;
 
 namespace Ticketing.Application.Features.Tickets.Commands.EscalateTicket;
 
@@ -12,11 +15,17 @@ public class EscalateTicketCommandHandler : IRequestHandler<EscalateTicketComman
 {
     private readonly ITicketRepository _ticketRepository;
     private readonly IMapper _mapper;
+    private readonly INotificationHubService _notificationHubService;
+    private readonly IUserRepository _userRepository;
+    private readonly INotificationRepository _notificationRepository;
 
-    public EscalateTicketCommandHandler(ITicketRepository ticketRepository, IMapper mapper)
+    public EscalateTicketCommandHandler(ITicketRepository ticketRepository, IMapper mapper, INotificationHubService notificationHubService, IUserRepository userRepository, INotificationRepository notificationRepository)
     {
         _ticketRepository = ticketRepository;
         _mapper = mapper;
+        _notificationHubService = notificationHubService;
+        _userRepository = userRepository;
+        _notificationRepository = notificationRepository;
     }
 
     public async Task<TicketResponseDto> Handle(EscalateTicketCommand request, CancellationToken cancellationToken)
@@ -41,6 +50,35 @@ public class EscalateTicketCommandHandler : IRequestHandler<EscalateTicketComman
         _ticketRepository.Update(ticket);
         await _ticketRepository.SaveChangesAsync(cancellationToken);
 
-        return _mapper.Map<TicketResponseDto>(ticket);
+        var updatedticket = _mapper.Map<TicketResponseDto>(ticket);
+        await _notificationHubService.NotifyTicketStatusChangedAsync(updatedticket.Id, updatedticket);
+        foreach(var manager in await _userRepository.GetManagersByDepartmentAsync(ticket.DepartmentId, cancellationToken))
+        {
+            var notification = new Notification
+            {
+                UserId = manager.Id,
+                Title = "Escalated Ticket",
+                Message = $"A ticket has been escalated: {ticket.Title}",
+                Type = NotificationType.ChatMessage,
+                TicketId = ticket.Id
+            };
+
+            await _notificationRepository.AddAsync(notification, cancellationToken);
+            await _notificationRepository.SaveChangesAsync(cancellationToken);
+
+            var notificationDto = new NotificationDto
+            {
+                Id = notification.Id,
+                Title = notification.Title,
+                Message = notification.Message,
+                Type = notification.Type,
+                IsRead = notification.IsRead,
+                ReadAt = notification.ReadAt,
+                TicketId = notification.TicketId,
+                CreatedAt = notification.CreatedAt
+            };
+            await _notificationHubService.NotifyUserAsync(manager.Id, notificationDto);
+        }
+        return updatedticket;
     }
 }

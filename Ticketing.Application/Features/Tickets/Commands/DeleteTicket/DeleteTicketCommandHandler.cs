@@ -11,19 +11,22 @@ public class DeleteTicketCommandHandler : IRequestHandler<DeleteTicketCommand, U
     private readonly IRatingRepository _ratingRepository;
     private readonly INotificationRepository _notificationRepository;
     private readonly ICurrentUserService _currentUserService;
+    private readonly INotificationHubService _notificationHubService;
 
     public DeleteTicketCommandHandler(
         ITicketRepository ticketRepository,
         ITicketMessageRepository messageRepository,
         IRatingRepository ratingRepository,
         INotificationRepository notificationRepository,
-        ICurrentUserService currentUserService)
+        ICurrentUserService currentUserService,
+        INotificationHubService notificationHubService)
     {
         _ticketRepository = ticketRepository;
         _messageRepository = messageRepository;
         _ratingRepository = ratingRepository;
         _notificationRepository = notificationRepository;
         _currentUserService = currentUserService;
+        _notificationHubService = notificationHubService;
     }
 
     public async Task<Unit> Handle(DeleteTicketCommand request, CancellationToken cancellationToken)
@@ -66,7 +69,7 @@ public class DeleteTicketCommandHandler : IRequestHandler<DeleteTicketCommand, U
 
         _ticketRepository.Delete(ticket);
         await _ticketRepository.SaveChangesAsync(cancellationToken);
-
+        await _notificationHubService.NotifyTicketDeletionAsync(request.TicketId);
         return Unit.Value;
     }
 }

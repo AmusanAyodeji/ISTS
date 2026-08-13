@@ -9,28 +9,31 @@ using Ticketing.Application.Interfaces.Services;
 using Ticketing.Domain.Enums;
 using Ticketing.Application.Features.Tickets.Queries.GetTicketById;
 
-namespace Ticketing.Application.Features.Tickets.Commands.AssignTicket;
+namespace Ticketing.Application.Features.Tickets.Commands.ReassignTicket;
 
-public class AssignTicketCommandHandler : IRequestHandler<AssignTicketCommand, TicketResponseDto>
+public class ReassignTicketCommandHandler : IRequestHandler<ReassignTicketCommand, TicketResponseDto>
 {
     private readonly ITicketRepository _ticketRepository;
     private readonly IUserRepository _userRepository;
+    private readonly ITicketMessageRepository _messageRepository;
     private readonly IMapper _mapper;
     private readonly INotificationHubService _notificationHubService;
 
-    public AssignTicketCommandHandler(
+    public ReassignTicketCommandHandler(
         ITicketRepository ticketRepository,
         IUserRepository userRepository,
-        IMapper mapper, 
-        INotificationHubService notificationHubService)
+        IMapper mapper,
+        INotificationHubService notificationHubService,
+        ITicketMessageRepository messageRepository)
     {
         _ticketRepository = ticketRepository;
         _userRepository = userRepository;
         _mapper = mapper;
         _notificationHubService = notificationHubService;
+        _messageRepository = messageRepository;
     }
 
-    public async Task<TicketResponseDto> Handle(AssignTicketCommand request, CancellationToken cancellationToken)
+    public async Task<TicketResponseDto> Handle(ReassignTicketCommand request, CancellationToken cancellationToken)
     {
         // Load the ticket with change tracking and without related-entity includes
         // so Update() does not try to attach an already-tracked Department/User graph.
@@ -38,10 +41,6 @@ public class AssignTicketCommandHandler : IRequestHandler<AssignTicketCommand, T
         if (ticket == null)
         {
             throw new KeyNotFoundException("Ticket not found.");
-        }
-        if(ticket.AssignedToId is not null)
-        {
-            throw new InvalidOperationException("Ticket already assigned to someone else");
         }
         if (ticket.Status == TicketStatus.Resolved || ticket.Status == TicketStatus.Closed)
         {
@@ -59,16 +58,27 @@ public class AssignTicketCommandHandler : IRequestHandler<AssignTicketCommand, T
         {
             throw new InvalidOperationException("Selected user is not authorized to handle tickets.");
         }
+        var oldAgent = ticket.AssignedToId;
         ticket.AssignedToId = agentId;
         ticket.Status = TicketStatus.InProgress;
 
         var updatedticket = _mapper.Map<TicketResponseDto>(ticket);
         await _notificationHubService.NotifyTicketStatusChangedAsync(updatedticket.Id, updatedticket);
-        await _notificationHubService.NotifyUnassignedTicketAcceptedAsync(new TicketAssignedDto { AgentId = agentId, TicketId = ticket.Id});
 
         _ticketRepository.Update(ticket);
         await _ticketRepository.SaveChangesAsync(cancellationToken);
 
+        var messages = await _messageRepository.GetByTicketIdAsync(request.TicketId, cancellationToken);
+        foreach(var message in messages)
+        {
+            if(message.SenderUserId == oldAgent)
+            {
+                message.SenderUserId = agentId;
+                message.SenderUser = agent;
+                _messageRepository.Update(message);
+            }
+        }
+        await _messageRepository.SaveChangesAsync(cancellationToken);
         return updatedticket;
     }
 }

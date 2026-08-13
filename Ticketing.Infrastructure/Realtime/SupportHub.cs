@@ -24,6 +24,16 @@ public class SupportHub : Hub
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"ticket-{ticketId}");
     }
 
+    public async Task JoinUnassignedTicketsGroup(Guid ticketId)
+    {
+        await Groups.AddToGroupAsync(Context.ConnectionId, "ticketqueue");
+    }
+
+    public async Task LeaveUnassignedTicketsGroup(Guid ticketId)
+    {
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, "ticketqueue");
+    }
+
     public async Task Typing(Guid ticketId)
     {
         var userName = Context.User?.Identity?.Name ?? "Unknown";

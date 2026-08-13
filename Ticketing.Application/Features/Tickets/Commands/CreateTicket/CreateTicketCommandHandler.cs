@@ -17,19 +17,22 @@ public class CreateTicketCommandHandler : IRequestHandler<CreateTicketCommand, T
     private readonly ISLARepository _slaRepository;
     private readonly IMapper _mapper;
     private readonly ICurrentUserService _currentUserService;
+    private readonly INotificationHubService _notificationHubService;
 
     public CreateTicketCommandHandler(
         ITicketRepository ticketRepository,
         ICategoryRepository categoryRepository,
         ISLARepository slaRepository,
         IMapper mapper,
-        ICurrentUserService currentUserService)
+        ICurrentUserService currentUserService,
+        INotificationHubService notificationHubService)
     {
         _ticketRepository = ticketRepository;
         _categoryRepository = categoryRepository;
         _slaRepository = slaRepository;
         _mapper = mapper;
         _currentUserService = currentUserService;
+        _notificationHubService = notificationHubService;
     }
 
     public async Task<TicketResponseDto> Handle(CreateTicketCommand request, CancellationToken cancellationToken)
@@ -65,7 +68,9 @@ public class CreateTicketCommandHandler : IRequestHandler<CreateTicketCommand, T
         await _ticketRepository.SaveChangesAsync(cancellationToken);
 
         var createdTicket = await _ticketRepository.GetByIdWithDetailsAsync(ticket.Id, cancellationToken);
-        return _mapper.Map<TicketResponseDto>(createdTicket ?? ticket);
+        var returnTicket = _mapper.Map<TicketResponseDto>(createdTicket ?? ticket);
+        await _notificationHubService.AddTicketToQueueAsync(returnTicket);
+        return returnTicket;
     }
 
     private static int GetDefaultResolutionMinutes(TicketPriority priority)
