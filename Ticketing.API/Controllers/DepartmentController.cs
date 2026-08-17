@@ -11,7 +11,7 @@ namespace Ticketing.API.Controllers;
 
 [ApiController]
 [Route("api/departments")]
-[Authorize]
+[Authorize(Policy = "AdminOnly")]
 public class DepartmentController : ControllerBase
 {
     private readonly IDepartmentRepository _repo;

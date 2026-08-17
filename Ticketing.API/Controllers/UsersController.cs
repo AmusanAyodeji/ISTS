@@ -8,6 +8,10 @@ using Ticketing.Application.Features.Users.Commands.UpdateUser;
 using Ticketing.Application.Features.Users.Queries.GetAgents;
 using Ticketing.Application.Features.Users.Queries.GetCurrentUser;
 using Ticketing.Application.Features.Users.Queries.GetUsers;
+using Ticketing.Application.Features.Users.Commands.CreateUsersBulk;
+using CsvHelper;
+using Ticketing.Application.Common.Mappings;
+using System.Globalization;
 
 namespace Ticketing.API.Controllers;
 
@@ -51,8 +55,52 @@ public class UsersController : BaseApiController
         return StatusCode(StatusCodes.Status201Created, ApiResponse<CreateUserResponseDto>.Success(result, "User created successfully."));
     }
 
+    [HttpPost("upload")]
+    [Authorize(Policy = "AdminOnly")]
+    [ProducesResponseType(typeof(ApiResponse<CreateUserResponseDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Create(IFormFile UserData, Guid DepartmentId, CancellationToken cancellationToken)
+    {
+        if (Path.GetExtension(UserData.FileName).ToLowerInvariant() != ".csv")
+        {
+            throw new InvalidOperationException("Only CSV files are supported.");
+        }
+        using var reader = new StreamReader(UserData.OpenReadStream());
+        using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
+        try
+        {    
+            csv.Context.RegisterClassMap<UserInfoMap>();
+            var userinfo = new List<UserInfo>();
+            await foreach (var record in csv.GetRecordsAsync<UserInfo>())
+            {
+                userinfo.Add(record);
+            }
+            if(userinfo.Where(user => user.Role.ToUpper() == "MANAGER").Count() == 0)
+            {
+                return BadRequest(
+                ApiResponse<object>.Failure(
+                    new[]
+                    {
+                        "There Should Be At Least One Manager Per Department"
+                    }));
+            }
+            var result = await Mediator.Send(new CreateUsersBulkCommand(DepartmentId, userinfo, UserData.FileName), cancellationToken);
+            return StatusCode(StatusCodes.Status201Created, ApiResponse<BulkResponseDTO>.Success(result, "File Uploaded successfully."));
+        }
+        catch (HeaderValidationException)
+        {
+            return BadRequest(
+                ApiResponse<object>.Failure(
+                    new[]
+                    {
+                        "The uploaded file does not match the required template."
+                    }));
+        }        
+    }
+
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = "ManagerOrAdmin")]
+    [Authorize]
     [ProducesResponseType(typeof(ApiResponse<UserDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateUserRequestDto request, CancellationToken cancellationToken)
     {

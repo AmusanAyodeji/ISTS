@@ -70,4 +70,12 @@ public class NotificationHubService : INotificationHubService
             .Group("ticketqueue")
             .SendAsync("TicketDeleted", TicketId);
     }
+
+    public async Task LoadResultsandErrors(Guid userId, Guid JobId)
+    {
+        await _supportHubContext
+            .Clients
+            .Group($"admin-{userId}")
+            .SendAsync("JobCompleted", JobId);
+    }
 }

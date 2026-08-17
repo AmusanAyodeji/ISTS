@@ -7,6 +7,7 @@ using Ticketing.Application.Common.Mappings;
 using Ticketing.API.Middleware;
 using Ticketing.Application;
 using Ticketing.Domain.Entities;
+using MassTransit;
 using Ticketing.Infrastructure;
 using Ticketing.Infrastructure.Persistence.Context;
 using Ticketing.Infrastructure.Persistence.Seeders;
@@ -14,6 +15,7 @@ using Ticketing.Infrastructure.Realtime;
 using Swashbuckle.AspNetCore.Filters;
 using Ticketing.Api.SwaggerExamples;
 using Ticketing.Infrastructure.BackgroundJobs;
+using Ticketing.Infrastructure.Consumer;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -88,6 +90,17 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddSwaggerExamplesFromAssemblyOf<CreateSLARequestDTOExample>();
 
 builder.Services.AddHostedService<SLABreachBackgroundService>();
+
+builder.Services.AddMassTransit(x =>
+{
+    x.AddConsumer<JobConsumer>();
+
+    x.UsingRabbitMq((context, cfg) =>
+    {
+        cfg.Host(new Uri(builder.Configuration["RabbitMQ:ConnectionString"]!));
+        cfg.ConfigureEndpoints(context);
+    });
+});
 
 var app = builder.Build();
 

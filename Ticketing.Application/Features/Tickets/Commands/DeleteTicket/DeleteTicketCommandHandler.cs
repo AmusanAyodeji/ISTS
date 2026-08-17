@@ -1,6 +1,7 @@
 using MediatR;
 using Ticketing.Application.Interfaces.Persistence;
 using Ticketing.Application.Interfaces.Services;
+using Ticketing.Domain.Enums;
 
 namespace Ticketing.Application.Features.Tickets.Commands.DeleteTicket;
 
@@ -42,6 +43,11 @@ public class DeleteTicketCommandHandler : IRequestHandler<DeleteTicketCommand, U
         if (ticket.CreatedById != _currentUserService.UserId.Value)
         {
             throw new UnauthorizedAccessException("You can only delete tickets you created.");
+        }
+
+        if(ticket.Status != TicketStatus.Open)
+        {
+            throw new InvalidOperationException("You cannot delete a ticket that has been accepted or closed");
         }
 
         // Load related ratings/notification entities without their navigation graph so we do

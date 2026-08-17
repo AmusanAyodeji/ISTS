@@ -16,6 +16,7 @@ using Ticketing.Infrastructure.Persistence.Context;
 using Ticketing.Infrastructure.Persistence.Repositories;
 using Ticketing.Infrastructure.Realtime;
 using Ticketing.Infrastructure.Storage;
+using Ticketing.Infrastructure.Helper;
 
 namespace Ticketing.Infrastructure;
 
@@ -56,6 +57,8 @@ public static class DependencyInjection
         services.AddScoped<IRatingRepository, RatingRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<ITicketMessageRepository, TicketMessageRepository>();
+        services.AddScoped<IJobRepository, JobRepository>();
+        services.AddScoped<IJobErrorRepository, JobErrorRepository>();
         services.AddScoped<IFileAttachmentRepository, FileAttachmentRepository>();
 
         services.AddHttpClient<IEmailService, EmailService>();
@@ -68,6 +71,8 @@ public static class DependencyInjection
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
         services.AddScoped<INotificationHubService, NotificationHubService>();
+        services.AddScoped<IValidateRecord, ValidateRecord>();
+        services.AddScoped<IUserCreationService, UserCreationService>();
 
         services.AddHttpContextAccessor();
 

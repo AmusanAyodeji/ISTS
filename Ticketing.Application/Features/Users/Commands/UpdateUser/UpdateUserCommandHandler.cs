@@ -1,5 +1,6 @@
 using MediatR;
 using Ticketing.Application.DTOs.Users;
+using Ticketing.Application.Interfaces.Services;
 using Ticketing.Application.Interfaces.Persistence;
 
 namespace Ticketing.Application.Features.Users.Commands.UpdateUser;
@@ -7,10 +8,12 @@ namespace Ticketing.Application.Features.Users.Commands.UpdateUser;
 public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, UserDto>
 {
     private readonly IUserRepository _userRepository;
+    private readonly ICurrentUserService _currentUserService;
 
-    public UpdateUserCommandHandler(IUserRepository userRepository)
+    public UpdateUserCommandHandler(IUserRepository userRepository, ICurrentUserService currentUserService)
     {
         _userRepository = userRepository;
+        _currentUserService = currentUserService;
     }
 
     public async Task<UserDto> Handle(UpdateUserCommand request, CancellationToken cancellationToken)
@@ -19,6 +22,10 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, UserD
         if (user is null)
         {
             throw new KeyNotFoundException("User not found.");
+        }
+        if(request.UserId != _currentUserService.UserId || user.Roles.Any(r => r.Name == "Admin"))
+        {
+            throw new InvalidOperationException("Only the account owner or an admin can edit information");
         }
 
         user.FirstName = request.Request.FirstName;

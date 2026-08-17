@@ -181,11 +181,11 @@ public async Task<IActionResult> GetBreachedTickets(
     [HttpPut("{id:guid}/close")]
     [Authorize(Policy = "AgentOrAbove")]
     public async Task<IActionResult> CloseTicket(
-        Guid TicketId,
+        Guid id,
         CancellationToken cancellationToken)
     {
         var result = await Mediator.Send(
-            new CloseTicketCommand(TicketId), cancellationToken);
+            new CloseTicketCommand(id), cancellationToken);
 
         return Ok("Ticket closed successfully");
     }

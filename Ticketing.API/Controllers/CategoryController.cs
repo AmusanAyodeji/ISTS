@@ -47,7 +47,7 @@ public class CategoryController : BaseApiController
     }
 
     [HttpGet("department/{departmentId:guid}")]
-    [Authorize(Policy = "ManagerOrAdmin")]
+    [Authorize]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<CategoryResponseDto>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetByDepartment(
         Guid departmentId,

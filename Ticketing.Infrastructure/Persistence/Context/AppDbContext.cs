@@ -19,6 +19,8 @@ public class AppDbContext : DbContext
     public DbSet<FileAttachment> FileAttachments => Set<FileAttachment>();
     public DbSet<SLA> SLAs => Set<SLA>();
     public DbSet<Ratings> Ratings => Set<Ratings>();
+    public DbSet<Job> Jobs => Set<Job>();
+    public DbSet<JobError> JobErrors => Set<JobError>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

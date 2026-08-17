@@ -73,7 +73,6 @@ public static class DataSeeder
         }
 
         await SeedSLAsAsync(context, itDepartment, hrDepartment, financeDepartment, logger);
-        await SeedTicketsAsync(context, logger);
     }
 
     private static User? CreateUserIfMissing(
@@ -132,92 +131,6 @@ public static class DataSeeder
 
         context.SLAs.AddRange(slaEntries);
         await context.SaveChangesAsync();
-
         logger.LogInformation("Seeded default SLA entries for all departments.");
-    }
-
-    private static async Task SeedTicketsAsync(AppDbContext context, ILogger logger)
-    {
-        if (await context.Tickets.AnyAsync())
-            return;
-
-        var staff = await context.Users.FirstOrDefaultAsync(u => u.Email == "staff@ists.local");
-        var agent = await context.Users.FirstOrDefaultAsync(u => u.Email == "agent@ists.local");
-
-        if (staff is null || agent is null)
-        {
-            logger.LogWarning("Staff or agent user not found; skipping ticket seeding.");
-            return;
-        }
-
-        var now = DateTime.UtcNow;
-
-        var ticketData = new[]
-        {
-            ("Laptop not powering on after update", "My laptop shut down during the update and now it will not turn on.", TicketPriority.High, TicketStatus.InProgress, true, now.AddHours(-3)),
-            ("Cannot connect to VPN", "I am unable to connect to the corporate VPN from my home office.", TicketPriority.Medium, TicketStatus.Open, false, now.AddHours(-5)),
-            ("Printer issue in HR", "The HR department printer is showing a paper jam error with no paper jammed.", TicketPriority.Low, TicketStatus.Resolved, true, now.AddDays(-2)),
-            ("Password reset request", "I forgot my password and need it reset urgently to finish a report.", TicketPriority.Urgent, TicketStatus.Closed, true, now.AddHours(-1)),
-            ("Blue screen showing", "My computer shows a blue screen every time I open Excel.", TicketPriority.High, TicketStatus.Open, false, now.AddHours(-6)),
-            ("Email not syncing", "Outlook on my phone is not syncing with the server.", TicketPriority.Medium, TicketStatus.InProgress, true, now.AddHours(-4)),
-            ("Payroll discrepancy", "My payslip shows missing overtime hours for last month.", TicketPriority.High, TicketStatus.Open, false, now.AddHours(-2)),
-            ("Invoice approval stuck", "A client invoice has been pending approval for three days.", TicketPriority.Medium, TicketStatus.Resolved, false, now.AddDays(-1)),
-            ("Screen flickering", "My monitor flickers continuously and causes eye strain.", TicketPriority.Low, TicketStatus.Open, true, now.AddHours(-8)),
-            ("New hire laptop request", "Please prepare a laptop for the new developer starting next week.", TicketPriority.Medium, TicketStatus.InProgress, false, now.AddHours(-10)),
-            ("File server access denied", "I cannot access the shared file server this morning.", TicketPriority.Urgent, TicketStatus.Open, true, now.AddMinutes(-30)),
-            ("Expense reimbursement", "My expense claim from last month has not been reimbursed yet.", TicketPriority.Low, TicketStatus.Closed, false, now.AddDays(-5)),
-            ("Software license expired", "My design tool license expired and I cannot renew it.", TicketPriority.High, TicketStatus.InProgress, true, now.AddHours(-7)),
-            ("Meeting room projector", "Projector in conference room B is not displaying HDMI input.", TicketPriority.Medium, TicketStatus.Resolved, true, now.AddDays(-3)),
-            ("Security alert response", "Respond to the phishing alert reported by three staff members.", TicketPriority.Urgent, TicketStatus.InProgress, true, now.AddMinutes(-45))
-        };
-
-        var categories = await context.Categories.ToListAsync();
-        var random = new Random(42);
-
-        var tickets = new List<Ticket>();
-
-        foreach (var (title, description, priority, status, assigned, createdAt) in ticketData)
-        {
-            var category = categories[random.Next(categories.Count)];
-            var slaMinutes = GetDefaultSlaMinutes(priority);
-            var slaDueAt = createdAt.AddMinutes(slaMinutes);
-
-            // Resolved tickets: 50/50 within or over SLA for variety
-            DateTime? resolvedAt = status is TicketStatus.Resolved or TicketStatus.Closed
-                ? createdAt.AddMinutes(random.Next(2) == 0 ? slaMinutes - 10 : slaMinutes + 20)
-                : null;
-
-            tickets.Add(new Ticket
-            {
-                Title = title,
-                Description = description,
-                Priority = priority,
-                Status = status,
-                DepartmentId = category.DepartmentId,
-                CategoryId = category.Id,
-                CreatedById = staff.Id,
-                CreatedAt = createdAt,
-                AssignedToId = assigned ? agent.Id : null,
-                SlaDueAt = slaDueAt,
-                ResolvedAt = resolvedAt
-            });
-        }
-
-        context.Tickets.AddRange(tickets);
-        await context.SaveChangesAsync();
-
-        logger.LogInformation("Seeded {TicketCount} sample tickets.", tickets.Count);
-    }
-
-    private static int GetDefaultSlaMinutes(TicketPriority priority)
-    {
-        return priority switch
-        {
-            TicketPriority.Low => 24 * 60,
-            TicketPriority.Medium => 8 * 60,
-            TicketPriority.High => 4 * 60,
-            TicketPriority.Urgent => 60,
-            _ => 8 * 60
-        };
     }
 }

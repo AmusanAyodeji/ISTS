@@ -15,4 +15,5 @@ public interface INotificationHubService
     Task NotifyUnassignedTicketAcceptedAsync(TicketAssignedDto dto);
     Task AddTicketToQueueAsync(TicketResponseDto ticket);
     Task NotifyTicketDeletionAsync(Guid TicketId);
+    Task LoadResultsandErrors(Guid userId, Guid JobId);
 }
