@@ -45,7 +45,7 @@ public class ValidateRecord: IValidateRecord
 
             if (string.IsNullOrWhiteSpace(value))
             {
-                await AddError($"{property.Name} Is empty on row {rowcount} in file {FileName}", JobId, DepartmentId);
+                await AddError($"{property.Name} is empty on row {rowcount} in file {FileName}", JobId, DepartmentId);
             }
         }
     }
@@ -60,6 +60,10 @@ public class ValidateRecord: IValidateRecord
 
     private async Task IsValidEmail(string email, Guid JobId, Guid DepartmentId, int rowcount, string FileName)
     {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return;
+        }
         if (!(email.Contains("@") && email.Contains(".com", StringComparison.OrdinalIgnoreCase)))
         {
             await AddError($"Invalid email on row {rowcount} in file {FileName}", JobId, DepartmentId );
@@ -69,6 +73,10 @@ public class ValidateRecord: IValidateRecord
     private async Task IsValidRole(string role, Guid JobId, Guid DepartmentId, int rowcount, string FileName)
     {
         List<String> roles = ["MANAGER", "AGENT", "STAFF"];
+        if (string.IsNullOrWhiteSpace(role))
+        {
+            return;
+        }
         if (!roles.Contains(role.ToUpper()))
         {
             await AddError($"Invalid role on row {rowcount} in file {FileName}", JobId, DepartmentId);

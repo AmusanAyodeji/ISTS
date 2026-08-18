@@ -15,11 +15,6 @@ public class UserInfo
     public string Role { get; set; }
 }
 
-public class BulkStatusResponseDTO:BulkResponseDTO
-{
-
-}
-
 public class BulkJobDTO
 {
     public Guid JobId { get; set; }
@@ -28,4 +23,11 @@ public class BulkJobDTO
     public IList<UserInfo> Userdata { get; set; }
     public int TotalRows { get; set; }
     public string FileName { get; set; }
+}
+
+public class JobErrorDTO
+{
+    public Guid JobId { get; set; }
+    public string Message { get; set; }
+    public Guid DepartmentId { get; set; }
 }

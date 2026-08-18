@@ -8,6 +8,7 @@ using Ticketing.Application.Features.Users.Commands.UpdateUser;
 using Ticketing.Application.Features.Users.Queries.GetAgents;
 using Ticketing.Application.Features.Users.Queries.GetCurrentUser;
 using Ticketing.Application.Features.Users.Queries.GetUsers;
+using Ticketing.Application.Features.Users.Queries.GetErrors;
 using Ticketing.Application.Features.Users.Commands.CreateUsersBulk;
 using CsvHelper;
 using Ticketing.Application.Common.Mappings;
@@ -97,6 +98,16 @@ public class UsersController : BaseApiController
                         "The uploaded file does not match the required template."
                     }));
         }        
+    }
+
+    [HttpGet("errors")]
+    [Authorize(Policy = "AdminOnly")]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> GetErrors(Guid JobId, CancellationToken cancellationToken)
+    {
+        var result = await Mediator.Send(new GetErrorsQuery(JobId), cancellationToken);
+        return Ok(ApiResponse<List<JobErrorDTO>>.Success(result));
     }
 
     [HttpPut("{id:guid}")]

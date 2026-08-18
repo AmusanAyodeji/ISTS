@@ -1,8 +1,9 @@
+using Ticketing.Application.DTOs.Users;
 using Ticketing.Domain.Entities;
-using Ticketing.Domain.Enums;
 
 namespace Ticketing.Application.Interfaces.Persistence;
 
 public interface IJobErrorRepository : IGenericRepository<JobError>
 {
+    Task<List<JobError>> GetErrorsByJobId(Guid JobId, CancellationToken cancellationToken);
 }
