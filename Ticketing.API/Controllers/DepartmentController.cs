@@ -11,7 +11,6 @@ namespace Ticketing.API.Controllers;
 
 [ApiController]
 [Route("api/departments")]
-[Authorize(Policy = "AdminOnly")]
 public class DepartmentController : ControllerBase
 {
     private readonly IDepartmentRepository _repo;
@@ -35,6 +34,7 @@ public class DepartmentController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> Create(CreateDepartmentDto dto)
     {
         var department = new Department
@@ -51,6 +51,7 @@ public class DepartmentController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize]
     public async Task<IActionResult> GetAll()
     {
         var departments = await _repo.GetAllWithCategoriesAsync();
