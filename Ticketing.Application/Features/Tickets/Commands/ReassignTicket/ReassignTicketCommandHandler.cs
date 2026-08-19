@@ -60,6 +60,7 @@ public class ReassignTicketCommandHandler : IRequestHandler<ReassignTicketComman
         }
         var oldAgent = ticket.AssignedToId;
         ticket.AssignedToId = agentId;
+        ticket.AssignedTo = agent;
         ticket.Status = TicketStatus.InProgress;
 
         var updatedticket = _mapper.Map<TicketResponseDto>(ticket);

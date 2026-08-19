@@ -15,4 +15,7 @@ public interface ICategoryRepository : IGenericRepository<Category>
     Guid departmentId,
     string name,
     CancellationToken cancellationToken = default);
+    Task<bool> HasTicketsAsync(
+    Guid categoryId,
+    CancellationToken cancellationToken = default);
 }

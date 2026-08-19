@@ -17,17 +17,22 @@ public class GetUsersQueryHandler : IRequestHandler<GetUsersQuery, IReadOnlyList
     {
         var users = await _userRepository.ListWithRolesAsync(cancellationToken);
 
-        return users.Select(x => new UserDto
-        {
-            Id = x.Id,
-            FirstName = x.FirstName,
-            LastName = x.LastName,
-            Email = x.Email,
-            IsActive = x.IsActive,
-            Roles = x.Roles.Select(r => r.Name).ToList(),
-            DepartmentId = x.DepartmentId,
-            CreatedAt = x.CreatedAt,
-            UpdatedAt = x.UpdatedAt
-        }).ToList();
+        return users
+            .Select(x => new UserDto
+            {
+                Id = x.Id,
+                FirstName = x.FirstName,
+                LastName = x.LastName,
+                FullName = $"{x.FirstName} {x.LastName}",
+                Email = x.Email,
+                IsActive = x.IsActive,
+                Roles = x.Roles.Select(r => r.Name).ToList(),
+                DepartmentId = x.DepartmentId,
+                DepartmentName = x.Department?.Name,
+                CreatedAt = x.CreatedAt,
+                UpdatedAt = x.UpdatedAt
+            })
+            .OrderBy(x => x.FullName)
+            .ToList();
     }
 }
