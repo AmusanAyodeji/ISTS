@@ -19,13 +19,19 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, UserD
     public async Task<UserDto> Handle(UpdateUserCommand request, CancellationToken cancellationToken)
     {
         var user = await _userRepository.GetByIdWithRolesAsync(request.UserId, cancellationToken);
+        var loggedinuser = await _userRepository.GetByIdWithRolesAsync(_currentUserService.UserId.Value, cancellationToken);
         if (user is null)
         {
             throw new KeyNotFoundException("User not found.");
         }
-        if(request.UserId != _currentUserService.UserId || user.Roles.Any(r => r.Name == "Admin"))
+        foreach(var role in loggedinuser.Roles)
         {
-            throw new InvalidOperationException("Only the account owner or an admin can edit information");
+            Console.WriteLine(role.Name);
+        }
+        Console.WriteLine(loggedinuser.Roles.Any(r => r.Name != "Admin"));
+        if(request.UserId != _currentUserService.UserId) 
+        {
+            if(loggedinuser.Roles.Any(r => r.Name != "Admin")) throw new InvalidOperationException("Only the account owner or an admin can edit information");
         }
 
         user.FirstName = request.Request.FirstName;
