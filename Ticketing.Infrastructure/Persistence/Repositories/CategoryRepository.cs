@@ -35,33 +35,40 @@ public class CategoryRepository : GenericRepository<Category>, ICategoryReposito
     }
 
     public async Task<List<Category>> GetByDepartmentIdAsync(Guid departmentId)
-{
-    return await _context.Categories
-        .Where(c => c.DepartmentId == departmentId)
-        .ToListAsync();
-}
+    {
+        return await _context.Categories
+            .Where(c => c.DepartmentId == departmentId)
+            .ToListAsync();
+    }
 
-public async Task<bool> CategoryBelongsToDepartmentAsync(
+    public async Task<bool> CategoryBelongsToDepartmentAsync(
     Guid categoryId,
     Guid departmentId,
     CancellationToken cancellationToken = default)
-{
-    return await _context.Categories.AnyAsync(c =>
-        c.Id == categoryId &&
-        c.DepartmentId == departmentId,
-        cancellationToken);
-}
+    {
+        return await _context.Categories.AnyAsync(c =>
+            c.Id == categoryId &&
+            c.DepartmentId == departmentId,
+            cancellationToken);
+    }
 
-public async Task<bool> CategoryExistsAsync(
+    public async Task<bool> CategoryExistsAsync(
     Guid departmentId,
     string name,
     CancellationToken cancellationToken = default)
-{
-    var normalizedName = name.Trim().ToLower();
+    {
+        var normalizedName = name.Trim().ToLower();
 
-    return await _context.Categories.AnyAsync(c =>
-        c.DepartmentId == departmentId &&
-        c.Name.Trim().ToLower() == normalizedName,
-        cancellationToken);
-}
+        return await _context.Categories.AnyAsync(c =>
+            c.DepartmentId == departmentId &&
+            c.Name.Trim().ToLower() == normalizedName,
+            cancellationToken);
+    }
+
+    public async Task<bool> HasTicketsAsync(
+    Guid categoryId,
+    CancellationToken cancellationToken = default)
+    {
+        return await _context.Tickets.AnyAsync(t => t.CategoryId == categoryId, cancellationToken);
+    }
 }

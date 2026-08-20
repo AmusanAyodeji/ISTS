@@ -60,6 +60,7 @@ public class AssignTicketCommandHandler : IRequestHandler<AssignTicketCommand, T
             throw new InvalidOperationException("Selected user is not authorized to handle tickets.");
         }
         ticket.AssignedToId = agentId;
+        ticket.AssignedTo = agent;
         ticket.Status = TicketStatus.InProgress;
 
         var updatedticket = _mapper.Map<TicketResponseDto>(ticket);

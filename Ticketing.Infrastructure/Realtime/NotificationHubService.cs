@@ -63,12 +63,18 @@ public class NotificationHubService : INotificationHubService
             .Group("ticketqueue")
             .SendAsync("TicketAdded", ticket);
     }
-    public async Task NotifyTicketDeletionAsync(Guid TicketId)
+    public async Task NotifyTicketDeletionAsync(Guid ticketId, Guid? createdById = null)
     {
-        await _supportHubContext
-            .Clients
-            .Group("ticketqueue")
-            .SendAsync("TicketDeleted", TicketId);
+        var clients = _supportHubContext.Clients;
+        // Notify the global queue so agents and managers see the row disappear.
+        await clients.Group("ticketqueue").SendAsync("TicketDeleted", ticketId);
+        // Notify anyone currently viewing this ticket's drawer.
+        await clients.Group($"ticket-{ticketId}").SendAsync("TicketDeleted", ticketId);
+        // Notify the creator's personal group so their dashboard updates in real time.
+        if (createdById.HasValue)
+        {
+            await clients.Group($"user-{createdById.Value}").SendAsync("TicketDeleted", ticketId);
+        }
     }
 
     public async Task LoadResultsandErrors(Guid userId, Guid JobId)

@@ -47,7 +47,7 @@ public class UserRepository : GenericRepository<User>, IUserRepository
         return await DbSet
             .AsNoTracking()
             .Include(x => x.Roles)
-            .OrderBy(x => x.CreatedAt)
+            .Include(x => x.Department)
             .ToListAsync(cancellationToken);
     }
 

@@ -2,6 +2,7 @@ using MediatR;
 using Ticketing.Application.DTOs.Users;
 using Ticketing.Application.Interfaces.Services;
 using Ticketing.Application.Interfaces.Persistence;
+using Ticketing.Domain.Constants;
 
 namespace Ticketing.Application.Features.Users.Commands.UpdateUser;
 
@@ -24,7 +25,19 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, UserD
         {
             throw new KeyNotFoundException("User not found.");
         }
+<<<<<<< Updated upstream
         foreach(var role in loggedinuser.Roles)
+=======
+        if (_currentUserService.UserId is null)
+        {
+            throw new UnauthorizedAccessException("User must be authenticated to update a user.");
+        }
+
+        var currentUser = await _userRepository.GetByIdWithRolesAsync(_currentUserService.UserId.Value, cancellationToken);
+        var currentUserIsAdmin = currentUser?.Roles.Any(r => r.Name == SystemRoles.Admin) ?? false;
+
+        if (request.UserId != _currentUserService.UserId && !currentUserIsAdmin)
+>>>>>>> Stashed changes
         {
             Console.WriteLine(role.Name);
         }
@@ -39,8 +52,12 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, UserD
         user.IsActive = request.Request.IsActive;
         user.DepartmentId = request.Request.DepartmentId;
 
-        var roles = await _userRepository.GetRolesByNamesAsync(request.Request.Roles, cancellationToken);
-        if (roles.Count != request.Request.Roles.Distinct(StringComparer.OrdinalIgnoreCase).Count())
+        var normalizedRoleNames = request.Request.Roles
+            .Select(role => SystemRoles.All.FirstOrDefault(r => r.Equals(role, StringComparison.OrdinalIgnoreCase)) ?? role)
+            .ToList();
+
+        var roles = await _userRepository.GetRolesByNamesAsync(normalizedRoleNames, cancellationToken);
+        if (roles.Count != normalizedRoleNames.Distinct(StringComparer.OrdinalIgnoreCase).Count())
         {
             throw new InvalidOperationException("One or more roles are invalid.");
         }

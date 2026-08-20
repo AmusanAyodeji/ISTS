@@ -21,7 +21,7 @@ public class CreateUserCommandValidator : AbstractValidator<CreateUserCommand>
             .MaximumLength(255);
 
         RuleForEach(x => x.Request.Roles)
-            .Must(role => SystemRoles.All.Contains(role))
+            .Must(role => SystemRoles.All.Any(r => r.Equals(role, StringComparison.OrdinalIgnoreCase)))
             .WithMessage("Invalid role provided. Allowed roles: Staff, Agent, Manager, Admin.");
     }
 }
