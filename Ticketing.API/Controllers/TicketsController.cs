@@ -180,6 +180,7 @@ public async Task<IActionResult> GetBreachedTickets(
 
     [HttpPut("{id:guid}/close")]
     [Authorize(Policy = "AgentOrAbove")]
+    [ProducesResponseType(typeof(ApiResponse<TicketResponseDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> CloseTicket(
         Guid id,
         CancellationToken cancellationToken)
@@ -187,7 +188,7 @@ public async Task<IActionResult> GetBreachedTickets(
         var result = await Mediator.Send(
             new CloseTicketCommand(id), cancellationToken);
 
-        return Ok("Ticket closed successfully");
+        return Ok(ApiResponse<TicketResponseDto>.Success(result, "Ticket resolved successfully."));
     }
 
     [HttpPut("{id:guid}/escalate")]

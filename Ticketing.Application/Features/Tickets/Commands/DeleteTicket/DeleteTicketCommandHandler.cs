@@ -75,7 +75,7 @@ public class DeleteTicketCommandHandler : IRequestHandler<DeleteTicketCommand, U
 
         _ticketRepository.Delete(ticket);
         await _ticketRepository.SaveChangesAsync(cancellationToken);
-        await _notificationHubService.NotifyTicketDeletionAsync(request.TicketId);
+        await _notificationHubService.NotifyTicketDeletionAsync(request.TicketId, ticket.CreatedById);
         return Unit.Value;
     }
 }

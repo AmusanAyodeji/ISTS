@@ -1,26 +1,39 @@
-﻿using AutoMapper;
+using AutoMapper;
 using MediatR;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using Ticketing.Application.DTOs.Notifications;
 using Ticketing.Application.DTOs.SLA;
-using Ticketing.Domain.Entities;
 using Ticketing.Application.Interfaces.Persistence;
-using Ticketing.Application.Common.Mappings;
+using Ticketing.Application.Interfaces.Services;
+using Ticketing.Domain.Entities;
+using Ticketing.Domain.Enums;
 
 namespace Ticketing.Application.Features.SLAs.Commands.CreateSLA;
 
 public class CreateSLACommandHandler : IRequestHandler<CreateSLACommand, CreateSLAResponseDTO>
 {
-    private ISLARepository slarepository;
-    private IMapper mapper;
+    private readonly ISLARepository _slaRepository;
+    private readonly IMapper _mapper;
+    private readonly INotificationRepository _notificationRepository;
+    private readonly IUserRepository _userRepository;
+    private readonly INotificationHubService _notificationHubService;
 
-    public CreateSLACommandHandler(ISLARepository _slarepository, IMapper _mapper)
+    public CreateSLACommandHandler(
+        ISLARepository slaRepository,
+        IMapper mapper,
+        INotificationRepository notificationRepository,
+        IUserRepository userRepository,
+        INotificationHubService notificationHubService)
     {
-        mapper = _mapper;
-        slarepository = _slarepository;
+        _slaRepository = slaRepository;
+        _mapper = mapper;
+        _notificationRepository = notificationRepository;
+        _userRepository = userRepository;
+        _notificationHubService = notificationHubService;
     }
 
     public async Task<CreateSLAResponseDTO> Handle(CreateSLACommand request, CancellationToken cancellationToken)
@@ -39,7 +52,7 @@ public class CreateSLACommandHandler : IRequestHandler<CreateSLACommand, CreateS
             ResolutionTimeMinutes = priority.ResolutionTimeMinutes
         }).ToList();
 
-        var existingSlas = await slarepository.GetSLA(
+        var existingSlas = await _slaRepository.GetSLA(
             request.Request.DepartmentId,
             cancellationToken
         );
@@ -67,14 +80,60 @@ public class CreateSLACommandHandler : IRequestHandler<CreateSLACommand, CreateS
 
         foreach (var sla in slaEntities)
         {
-            await slarepository.AddAsync(sla, cancellationToken);
+            await _slaRepository.AddAsync(sla, cancellationToken);
         }
 
-        await slarepository.SaveChangesAsync(cancellationToken);
+        await _slaRepository.SaveChangesAsync(cancellationToken);
+
+        await NotifyDepartmentManagersAsync(request.Request.DepartmentId, cancellationToken);
+
         return new CreateSLAResponseDTO
         {
             DepartmentId = request.Request.DepartmentId,
-            SLAs = slaEntities.Select(sla => mapper.Map<SLAResponseItemDTO>(sla)).ToList()
+            SLAs = slaEntities.Select(sla => _mapper.Map<SLAResponseItemDTO>(sla)).ToList()
         };
+    }
+
+    private async Task NotifyDepartmentManagersAsync(Guid departmentId, CancellationToken cancellationToken)
+    {
+        var managers = await _userRepository.GetManagersByDepartmentAsync(departmentId, cancellationToken);
+        if (managers.Count == 0)
+        {
+            return;
+        }
+
+        const string title = "SLA rules created";
+        const string message = "New SLA rules have been configured for your department.";
+
+        foreach (var manager in managers)
+        {
+            var notification = new Notification
+            {
+                Id = Guid.NewGuid(),
+                UserId = manager.Id,
+                Title = title,
+                Message = message,
+                Type = NotificationType.Info,
+                TicketId = null
+            };
+
+            await _notificationRepository.AddAsync(notification, cancellationToken);
+
+            var notificationDto = new NotificationDto
+            {
+                Id = notification.Id,
+                Title = notification.Title,
+                Message = notification.Message,
+                Type = notification.Type,
+                IsRead = notification.IsRead,
+                ReadAt = notification.ReadAt,
+                TicketId = notification.TicketId,
+                CreatedAt = notification.CreatedAt
+            };
+
+            await _notificationHubService.NotifyUserAsync(manager.Id, notificationDto);
+        }
+
+        await _notificationRepository.SaveChangesAsync(cancellationToken);
     }
 }

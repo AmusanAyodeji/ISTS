@@ -1,4 +1,5 @@
 using AutoMapper;
+using Ticketing.Application.DTOs.Auth;
 using Ticketing.Application.DTOs.Users;
 using Ticketing.Domain.Entities;
 
@@ -9,6 +10,10 @@ public class UserMappingProfile : Profile
     public UserMappingProfile()
     {
         CreateMap<CreateUserRequestDto, User>()
+            .ForMember(dest => dest.Roles, opt => opt.Ignore())
+            .ForMember(dest => dest.PasswordHash, opt => opt.Ignore());
+
+        CreateMap<RegisterRequestDto, User>()
             .ForMember(dest => dest.Roles, opt => opt.Ignore())
             .ForMember(dest => dest.PasswordHash, opt => opt.Ignore());
 

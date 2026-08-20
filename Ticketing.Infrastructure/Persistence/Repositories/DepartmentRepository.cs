@@ -19,6 +19,18 @@ public class DepartmentRepository : GenericRepository<Department>, IDepartmentRe
         .ToListAsync();
     }
 
+    public async Task<Department?> GetByIdWithCategoriesAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await _context.Departments
+            .Include(d => d.Categories)
+            .FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+    }
+
+    public async Task<bool> HasTicketsAsync(Guid departmentId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Tickets.AnyAsync(t => t.DepartmentId == departmentId, cancellationToken);
+    }
+
     public async Task CreateAsync (Department department)
     {
         await _context.Departments.AddAsync(department);

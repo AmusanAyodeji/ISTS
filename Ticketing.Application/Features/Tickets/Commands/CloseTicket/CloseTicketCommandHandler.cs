@@ -11,7 +11,7 @@ using Ticketing.Application.Features.Tickets.Queries.GetTicketById;
 
 namespace Ticketing.Application.Features.Tickets.Commands.CloseTicket;
 
-public class CloseTicketCommandHandler : IRequestHandler<CloseTicketCommand, Unit>
+public class CloseTicketCommandHandler : IRequestHandler<CloseTicketCommand, TicketResponseDto>
 {
     private readonly ITicketRepository _ticketRepository;
     private readonly IUserRepository _userRepository;
@@ -33,7 +33,7 @@ public class CloseTicketCommandHandler : IRequestHandler<CloseTicketCommand, Uni
         _currentUserService = currentUserService;
     }
 
-    public async Task<Unit> Handle(CloseTicketCommand request, CancellationToken cancellationToken)
+    public async Task<TicketResponseDto> Handle(CloseTicketCommand request, CancellationToken cancellationToken)
     {
         var ticket = await _ticketRepository.GetByIdAsync(request.TicketId, cancellationToken);
         if (ticket == null)
@@ -44,23 +44,31 @@ public class CloseTicketCommandHandler : IRequestHandler<CloseTicketCommand, Uni
         {
             throw new InvalidOperationException("Ticket is not assigned to anyone");
         }
+<<<<<<< HEAD
         if (ticket.Status == TicketStatus.Closed || ticket.Status == TicketStatus.Resolved)
+=======
+        if (ticket.Status == TicketStatus.Resolved || ticket.Status == TicketStatus.Closed)
+>>>>>>> efda582a9473a9dc35caeaea6c310209292b265f
         {
-            throw new InvalidOperationException("Ticket is already closed.");
+            throw new InvalidOperationException("Ticket is already resolved.");
         }
         if(ticket.AssignedToId != _currentUserService.UserId.Value)
         {
-            throw new InvalidOperationException("Agent doesnt have permissions to close ticket");
+            throw new InvalidOperationException("Agent doesn't have permission to resolve this ticket.");
         }
 
         ticket.Status = TicketStatus.Resolved;
+<<<<<<< HEAD
+=======
+        ticket.ResolvedAt = DateTime.UtcNow;
+>>>>>>> efda582a9473a9dc35caeaea6c310209292b265f
 
-        var closedticket = _mapper.Map<TicketResponseDto>(ticket);
-        await _notificationHubService.NotifyTicketStatusChangedAsync(closedticket.Id, closedticket);
+        var resolvedTicket = _mapper.Map<TicketResponseDto>(ticket);
+        await _notificationHubService.NotifyTicketStatusChangedAsync(resolvedTicket.Id, resolvedTicket);
 
         _ticketRepository.Update(ticket);
         await _ticketRepository.SaveChangesAsync(cancellationToken);
 
-        return Unit.Value;
+        return resolvedTicket;
     }
 }

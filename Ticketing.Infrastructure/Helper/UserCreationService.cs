@@ -55,7 +55,9 @@ public class UserCreationService : IUserCreationService
 
         var requestedRoles = userdto.Roles.Count == 0
             ? new[] { SystemRoles.Staff }
-            : userdto.Roles;
+            : userdto.Roles
+                .Select(role => SystemRoles.All.FirstOrDefault(r => r.Equals(role, StringComparison.OrdinalIgnoreCase)) ?? role)
+                .ToArray();
 
         var roles = await _userRepository.GetRolesByNamesAsync(requestedRoles, cancellationToken);
         if (roles.Count != requestedRoles.Distinct(StringComparer.OrdinalIgnoreCase).Count())

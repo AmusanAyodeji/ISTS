@@ -34,12 +34,12 @@ public class SupportHub : Hub
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"admin-{userId}");
     }
 
-    public async Task JoinUnassignedTicketsGroup(Guid ticketId)
+    public async Task JoinUnassignedTicketsGroup()
     {
         await Groups.AddToGroupAsync(Context.ConnectionId, "ticketqueue");
     }
 
-    public async Task LeaveUnassignedTicketsGroup(Guid ticketId)
+    public async Task LeaveUnassignedTicketsGroup()
     {
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, "ticketqueue");
     }
