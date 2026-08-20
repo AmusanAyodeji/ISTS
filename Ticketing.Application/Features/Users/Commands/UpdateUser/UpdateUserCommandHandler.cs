@@ -25,19 +25,7 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, UserD
         {
             throw new KeyNotFoundException("User not found.");
         }
-<<<<<<< Updated upstream
         foreach(var role in loggedinuser.Roles)
-=======
-        if (_currentUserService.UserId is null)
-        {
-            throw new UnauthorizedAccessException("User must be authenticated to update a user.");
-        }
-
-        var currentUser = await _userRepository.GetByIdWithRolesAsync(_currentUserService.UserId.Value, cancellationToken);
-        var currentUserIsAdmin = currentUser?.Roles.Any(r => r.Name == SystemRoles.Admin) ?? false;
-
-        if (request.UserId != _currentUserService.UserId && !currentUserIsAdmin)
->>>>>>> Stashed changes
         {
             Console.WriteLine(role.Name);
         }
