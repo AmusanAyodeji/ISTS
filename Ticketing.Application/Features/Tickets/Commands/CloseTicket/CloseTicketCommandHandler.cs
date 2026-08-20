@@ -44,7 +44,7 @@ public class CloseTicketCommandHandler : IRequestHandler<CloseTicketCommand, Uni
         {
             throw new InvalidOperationException("Ticket is not assigned to anyone");
         }
-        if (ticket.Status == TicketStatus.Closed)
+        if (ticket.Status == TicketStatus.Closed || ticket.Status == TicketStatus.Resolved)
         {
             throw new InvalidOperationException("Ticket is already closed.");
         }
@@ -53,7 +53,7 @@ public class CloseTicketCommandHandler : IRequestHandler<CloseTicketCommand, Uni
             throw new InvalidOperationException("Agent doesnt have permissions to close ticket");
         }
 
-        ticket.Status = TicketStatus.Closed;
+        ticket.Status = TicketStatus.Resolved;
 
         var closedticket = _mapper.Map<TicketResponseDto>(ticket);
         await _notificationHubService.NotifyTicketStatusChangedAsync(closedticket.Id, closedticket);
